@@ -1,13 +1,15 @@
 class SudokuSolver
-  attr_reader :size
+  attr_reader :matrix
 
-  def initialize(size = 3)
-    @size = size
-    @matrix = Hash.new
+  def initialize()
+    @size = 0
+    @matrix = Array.new
   end
 
-  def load(file)
-    
+  def load(file_path)
+    File.open(file_path, 'r').each_line do |line|
+      @matrix.push(line.split)
+    end
   end
 
   class Cell
@@ -15,4 +17,9 @@ class SudokuSolver
 
     end
   end
+
 end
+
+sudoku = SudokuSolver.new
+sudoku.load('sudoku.txt')
+puts sudoku.matrix.to_s
