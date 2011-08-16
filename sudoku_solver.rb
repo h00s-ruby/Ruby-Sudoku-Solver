@@ -1,68 +1,128 @@
+# The program loads sudoku puzzle from file then
+# it tries to solve using various solving algorithms.
+# First algorithm is the simplest: brute force
+#
+# Author::    Krunoslav Husak  (mailto:krunoslav.husak@gmail.com)
+# Copyright:: Copyright (c) 2011 Krunoslav Husak
+# License::   Distributes under the same terms as Ruby
+
+# This class implements algorithms for solving sudoku puzzle.
+# Constructor requries one argument: path to textual file containing sudoku puzzle.
+# Sudoku can be any size (4x4, 9x9, 25x25, ...)
+# Cells where value is unknows should be 0. Example for file contents:
+# 0 0 1 0
+# 0 2 0 0
+# 3 0 0 0
+# 0 0 0 1
+
 class SudokuSolver
-  attr_reader :size
-  attr_reader :subgrid_size
+  attr_reader :grid
 
-  def initialize()
-    @size = 0
-    @grid = Array.new
+  def initialize(sudoku_file_path)
+    @grid = Grid.new
+    @grid.load_from_file(sudoku_file_path)
   end
 
-  def load_from_file(file_path)
-    File.open(file_path, 'r').each_line do |line|
-      @grid.push(
-          line.split.collect do |value|
-            value = value.to_i
-            if value > 0
-              Cell.new(value, true)
-            else
-              Cell.new(nil)
+  # Class implements methods for easier manipulation with grid
+  class Grid
+    attr_reader :size
+    attr_reader :sub_size
+
+    def initialize
+      @rows = Array.new
+    end
+
+    # Returns row as array at specified row index (starting from zero)
+    def row_at(row_index)
+      @rows[row_index]
+    end
+
+    # Returns column as array at specified column index (starting from zero)
+    def column_at(column_index)
+      @rows.transpose[column_index]
+    end
+
+    def load_from_file(file_path)
+      File.open(file_path, 'r').each_line do |line|
+        @rows.push(
+            line.split.collect do |value|
+              value = value.to_i
+              if value > 0
+                Cell.new(value, true)
+              else
+                Cell.new(nil)
+              end
             end
-          end
-      )
-    end
-    @size = @grid.count
-    @subgrid_size = Math.sqrt(@size)
-  end
-
-  def value_allowed?(value, row, column)
-    return false unless @grid[row].select {|cell| value == cell.value}.empty?
-    return false unless @grid.transpose[column].select {|cell| value == cell.value}.empty?
-    start_column = column - (column % @subgrid_size)
-    start_row = row - (row % @subgrid_size)
-    @grid[start_row..start_row+@subgrid_size-1].each do |row_to_check|
-      return false unless row_to_check[start_column..start_column+@subgrid_size-1].select {|cell| value == cell.value}.empty?
-    end
-    true
-  end
-
-  def to_s
-    output = ''
-    @grid.each do |row|
-      output += row.collect {|column| column.to_s}.join(' ') + "\n"
-    end
-    output
-  end
-
-  class Cell
-    attr_accessor :value
-    attr_reader :predefined
-
-    def initialize(value, predefined = false)
-      @value = value
-      @predefined = predefined
+        )
+      end
+      @size = @rows.count
+      @sub_size = Math.sqrt(@size)
     end
 
-    def empty?
-      @value.nil? ? true : false
+    def value_allowed?(row_index, column_index, value)
+      return false if row_contains_value?(row_index, value)
+      return false if column_contains_value?(column_index, value)
+      return false if subgrid_contains_value?(row_index, column_index, value)
+      true
+    end
+
+    def row_contains_value?(row_index, value)
+      return true if cells_contains_value?(row_at(row_index), value)
+      false
+    end
+
+    def column_contains_value?(column_index, value)
+      return true if cells_contains_value?(column_at(column_index), value)
+      false
+    end
+
+    def cells_contains_value?(cells, value)
+      return true unless cells.select { |cell| value == cell.value }.empty?
+      false
+    end
+
+    def subgrid_contains_value?(row_index, column_index, value)
+      start_row_index = row_index - (row_index % @sub_size)
+      start_column_index = column_index - (column_index % @sub_size)
+      end_row_index = start_row_index + @sub_size - 1
+      end_column_index = start_column_index + @sub_size - 1
+      @rows[start_row_index..end_row_index].each do |row|
+        return true if cells_contains_value?(row[start_column_index..end_column_index], value)
+      end
+      false
     end
 
     def to_s
-      empty? ? '?' : value
+      output = ''
+      @rows.each do |row|
+        output += row.collect { |column| column.to_s }.join(' ') + "\n"
+      end
+      output
     end
+
+    # Class represents one cell in sudoku grid
+    class Cell
+      attr_accessor :value
+      attr_reader :predefined
+
+      def initialize(value, predefined = false)
+        @value = value
+        @predefined = predefined
+      end
+
+      def empty?
+        @value.nil? ? true : false
+      end
+
+      def to_s
+        empty? ? '?' : value
+      end
+    end
+
   end
 
 end
 
-sudoku = SudokuSolver.new
-sudoku.load_from_file('sudoku.txt')
-puts sudoku.value_allowed? 2, 2, 1
+sudoku = SudokuSolver.new('sudoku.txt')
+puts sudoku.grid.to_s
+puts sudoku.grid.value_allowed? 2, 1, 3
