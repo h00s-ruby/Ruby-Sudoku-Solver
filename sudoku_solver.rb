@@ -23,13 +23,33 @@ class SudokuSolver
     @grid.load_from_file(sudoku_file_path)
   end
 
+  def solve_brute_force
+    @grid.move_to_first_cell
+    cell = @grid.next_cell
+    until cell.nil?
+      if cell_value = cell.increment
+        if @grid.value_allowed? (@grid.counter-1) / @grid.size.to_i, (@grid.counter-1) % @grid.size.to_i, cell_value
+          cell.increment!
+          cell = @grid.next_cell
+        else
+          cell.increment!
+        end
+      else
+        cell.empty!
+        cell = @grid.previous_cell
+      end
+    end
+  end
+
   # Class implements methods for easier manipulation with grid
   class Grid
     attr_reader :size
     attr_reader :sub_size
+    attr_reader :counter
 
     def initialize
       @rows = Array.new
+      @counter = 0
     end
 
     # Returns row as array at specified row index (starting from zero)
@@ -59,11 +79,42 @@ class SudokuSolver
       @sub_size = Math.sqrt(@size)
     end
 
+    def move_to_first_cell
+      @counter = 0
+    end
+
+    def next_cell
+      @rows.flatten[@counter..-1].each do |cell|
+        @counter = @counter.next
+        return cell unless cell.predefined?
+      end
+      nil
+    end
+
+    def previous_cell
+      @rows.flatten[0..@counter-2].reverse.each do |cell|
+        @counter = @counter.pred
+        return cell unless cell.predefined?
+      end
+      nil
+    end
+
+    def current_cell_value_allowed?
+      row = @counter / @sub_size.to_i
+      column = @counter % @sub_size.to_i
+      value_allowed? row, column, @rows[row][column].value
+    end
+
     def value_allowed?(row_index, column_index, value)
       return false if row_contains_value?(row_index, value)
       return false if column_contains_value?(column_index, value)
       return false if subgrid_contains_value?(row_index, column_index, value)
       true
+    end
+
+    def cells_contains_value?(cells, value)
+      return true unless cells.select { |cell| value == cell.value }.empty?
+      false
     end
 
     def row_contains_value?(row_index, value)
@@ -73,11 +124,6 @@ class SudokuSolver
 
     def column_contains_value?(column_index, value)
       return true if cells_contains_value?(column_at(column_index), value)
-      false
-    end
-
-    def cells_contains_value?(cells, value)
-      return true unless cells.select { |cell| value == cell.value }.empty?
       false
     end
 
@@ -110,12 +156,36 @@ class SudokuSolver
         @predefined = predefined
       end
 
+      def predefined?
+        @predefined
+      end
+
       def empty?
         @value.nil? ? true : false
       end
 
+      def empty!
+        @value = nil
+      end
+
       def to_s
-        empty? ? '?' : value
+        empty? ? '?' : @value.to_s
+      end
+
+      def increment
+        if empty?
+          1
+        else
+          if @value == 9
+            false
+          else
+            @value.next
+          end
+        end
+      end
+
+      def increment!
+        @value = self.increment
       end
     end
 
@@ -124,5 +194,5 @@ class SudokuSolver
 end
 
 sudoku = SudokuSolver.new('sudoku.txt')
+sudoku.solve_brute_force
 puts sudoku.grid.to_s
-puts sudoku.grid.value_allowed? 2, 1, 3
