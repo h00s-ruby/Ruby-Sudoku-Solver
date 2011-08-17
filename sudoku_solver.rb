@@ -18,9 +18,8 @@
 class SudokuSolver
   attr_reader :grid
 
-  def initialize(sudoku_file_path)
-    @grid = Grid.new
-    @grid.load_from_file(sudoku_file_path)
+  def initialize()
+    @grid = Grid.new()
   end
 
   def solve_brute_force
@@ -47,9 +46,10 @@ class SudokuSolver
     attr_reader :sub_size
     attr_reader :counter
 
-    def initialize
+    def initialize()
+      @size = 0
+      @sub_size = 0
       @rows = Array.new
-      @counter = 0
     end
 
     # Returns row as array at specified row index (starting from zero)
@@ -68,9 +68,9 @@ class SudokuSolver
             line.split.collect do |value|
               value = value.to_i
               if value > 0
-                Cell.new(value, true)
+                Cell.new(value, 9, true)
               else
-                Cell.new(nil)
+                Cell.new(nil, 9)
               end
             end
         )
@@ -151,7 +151,8 @@ class SudokuSolver
       attr_accessor :value
       attr_reader :predefined
 
-      def initialize(value, predefined = false)
+      def initialize(value, max_value = 9, predefined = false)
+        @max_value = max_value
         @value = value
         @predefined = predefined
       end
@@ -176,7 +177,7 @@ class SudokuSolver
         if empty?
           1
         else
-          if @value == 9
+          if @value == @max_value
             false
           else
             @value.next
@@ -193,6 +194,7 @@ class SudokuSolver
 
 end
 
-sudoku = SudokuSolver.new('sudoku.txt')
+sudoku = SudokuSolver.new()
+sudoku.grid.load_from_file('sudoku.txt')
 sudoku.solve_brute_force
 puts sudoku.grid.to_s
