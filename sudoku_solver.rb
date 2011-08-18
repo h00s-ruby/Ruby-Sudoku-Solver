@@ -23,19 +23,28 @@ class SudokuSolver
   end
 
   def solve_brute_force
-    @grid.move_to_first_cell
-    cell = @grid.next_cell
-    until cell.nil?
+    cell_index = 0
+    cell = @grid.cell_at(cell_index)
+    while cell_index < (@grid.size * @grid.size)
       if cell_value = cell.increment
-        if @grid.value_allowed? (@grid.counter-1) / @grid.size.to_i, (@grid.counter-1) % @grid.size.to_i, cell_value
+        if @grid.value_allowed? cell_index, cell_value
           cell.increment!
-          cell = @grid.next_cell
-        else
-          cell.increment!
+          (cell_index+1..(@grid.size*@grid.size)).each do |index|
+            next if @grid.cell_at(index).predefined?
+            cell_index = index
+            cell = @grid.cell_at(cell_index)
+            break
+          end
         end
+        cell.increment!
       else
         cell.empty!
-        cell = @grid.previous_cell
+        (0..cell_index-1).reverse_each do |index|
+          next if @grid.cell_at(index).predefined?
+          cell_index = index
+          cell = @grid.cell_at(cell_index)
+          break
+        end
       end
     end
   end
@@ -44,7 +53,6 @@ class SudokuSolver
   class Grid
     attr_reader :size
     attr_reader :sub_size
-    attr_reader :counter
 
     def initialize()
       @size = 0
@@ -52,14 +60,12 @@ class SudokuSolver
       @rows = Array.new
     end
 
-    # Returns row as array at specified row index (starting from zero)
-    def row_at(row_index)
-      @rows[row_index]
+    def [](row_index, column_index)
+      @rows[row_index][column_index]
     end
 
-    # Returns column as array at specified column index (starting from zero)
-    def column_at(column_index)
-      @rows.transpose[column_index]
+    def cell_at(cell_index)
+      @rows[cell_index / @size.to_i][cell_index % @size.to_i]
     end
 
     def load_from_file(file_path)
@@ -79,51 +85,26 @@ class SudokuSolver
       @sub_size = Math.sqrt(@size)
     end
 
-    def move_to_first_cell
-      @counter = 0
-    end
-
-    def next_cell
-      @rows.flatten[@counter..-1].each do |cell|
-        @counter = @counter.next
-        return cell unless cell.predefined?
-      end
-      nil
-    end
-
-    def previous_cell
-      @rows.flatten[0..@counter-2].reverse.each do |cell|
-        @counter = @counter.pred
-        return cell unless cell.predefined?
-      end
-      nil
-    end
-
-    def current_cell_value_allowed?
-      row = @counter / @sub_size.to_i
-      column = @counter % @sub_size.to_i
-      value_allowed? row, column, @rows[row][column].value
-    end
-
-    def value_allowed?(row_index, column_index, value)
+    def value_allowed?(cell_index, value)
+      row_index = cell_index / @size.to_i
+      column_index = cell_index % @size.to_i
       return false if row_contains_value?(row_index, value)
       return false if column_contains_value?(column_index, value)
       return false if subgrid_contains_value?(row_index, column_index, value)
       true
     end
 
-    def cells_contains_value?(cells, value)
-      return true unless cells.select { |cell| value == cell.value }.empty?
-      false
-    end
-
     def row_contains_value?(row_index, value)
-      return true if cells_contains_value?(row_at(row_index), value)
+      (0..@size-1).each do |column_index|
+        return true if @rows[row_index][column_index].value == value
+      end
       false
     end
 
     def column_contains_value?(column_index, value)
-      return true if cells_contains_value?(column_at(column_index), value)
+      (0..@size-1).each do |row_index|
+        return true if @rows[row_index][column_index].value == value
+      end
       false
     end
 
@@ -133,7 +114,9 @@ class SudokuSolver
       end_row_index = start_row_index + @sub_size - 1
       end_column_index = start_column_index + @sub_size - 1
       @rows[start_row_index..end_row_index].each do |row|
-        return true if cells_contains_value?(row[start_column_index..end_column_index], value)
+        row[start_column_index..end_column_index].each do |cell|
+          return true if cell.value == value
+        end
       end
       false
     end
