@@ -23,28 +23,19 @@ class SudokuSolver
   end
 
   def solve_brute_force
-    cell_index = 0
-    cell = @grid.cell_at(cell_index)
-    while cell_index < (@grid.size * @grid.size)
-      if cell_value = cell.increment
-        if @grid.value_allowed? cell_index, cell_value
+    cell_index, cell = @grid.first
+    until cell.nil?
+      cell_value = cell.increment
+      unless cell_value == false
+        if @grid.value_allowed?(cell_index, cell_value)
           cell.increment!
-          (cell_index+1..(@grid.size*@grid.size)).each do |index|
-            next if @grid.cell_at(index).predefined?
-            cell_index = index
-            cell = @grid.cell_at(cell_index)
-            break
-          end
+          cell_index, cell = @grid.next(cell_index)
+        else
+          cell.increment!
         end
-        cell.increment!
       else
         cell.empty!
-        (0..cell_index-1).reverse_each do |index|
-          next if @grid.cell_at(index).predefined?
-          cell_index = index
-          cell = @grid.cell_at(cell_index)
-          break
-        end
+        cell_index, cell = @grid.pred(cell_index)
       end
     end
   end
@@ -74,15 +65,36 @@ class SudokuSolver
             line.split.collect do |value|
               value = value.to_i
               if value > 0
-                Cell.new(value, 9, true)
+                Cell.new(value, 4, true)
               else
-                Cell.new(nil, 9)
+                Cell.new(nil, 4)
               end
             end
         )
       end
       @size = @rows.count
       @sub_size = Math.sqrt(@size)
+    end
+
+    def first
+      (0..(@size*@size-1)).each do |index|
+        return index, cell_at(index) unless cell_at(index).predefined?
+      end
+      nil
+    end
+
+    def next(cell_index)
+      (cell_index+1..(@size*@size-1)).each do |index|
+        return index, cell_at(index) unless cell_at(index).predefined?
+      end
+      return nil, nil
+    end
+
+    def pred(cell_index)
+      (0..cell_index-1).reverse_each do |index|
+        return index, cell_at(index) unless cell_at(index).predefined?
+      end
+      return nil, nil
     end
 
     def value_allowed?(cell_index, value)
@@ -134,7 +146,7 @@ class SudokuSolver
       attr_accessor :value
       attr_reader :predefined
 
-      def initialize(value, max_value = 9, predefined = false)
+      def initialize(value, max_value = 4, predefined = false)
         @max_value = max_value
         @value = value
         @predefined = predefined
