@@ -51,10 +51,6 @@ class SudokuSolver
       @rows = Array.new
     end
 
-    def [](row_index, column_index)
-      @rows[row_index][column_index]
-    end
-
     def cell_at(cell_index)
       @rows[cell_index / @size.to_i][cell_index % @size.to_i]
     end
@@ -65,9 +61,9 @@ class SudokuSolver
             line.split.collect do |value|
               value = value.to_i
               if value > 0
-                Cell.new(value, 4, true)
+                Cell.new(value, 9, true)
               else
-                Cell.new(nil, 4)
+                Cell.new(nil, 9)
               end
             end
         )
@@ -146,7 +142,7 @@ class SudokuSolver
       attr_accessor :value
       attr_reader :predefined
 
-      def initialize(value, max_value = 4, predefined = false)
+      def initialize(value, max_value = 9, predefined = false)
         @max_value = max_value
         @value = value
         @predefined = predefined
